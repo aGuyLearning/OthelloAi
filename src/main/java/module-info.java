@@ -6,6 +6,8 @@ module othello.othello {
     requires com.dlsc.formsfx;
     requires org.kordamp.bootstrapfx.core;
 
-    opens othello.othello to javafx.fxml;
-    exports othello.othello;
+    opens othello.gui to javafx.fxml;
+    exports othello.gui;
+    exports othello.game;
+    opens othello.game to javafx.fxml;
 }
