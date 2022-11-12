@@ -1,220 +1,600 @@
 package othello.game;
 
-import othello.gui.Move;
-
 import java.util.*;
 
-public class OthelloModel extends Observable {
+public class OthelloModel {
     private static final int PLAYER_BLACK = 0;
     private static final int PLAYER_WHITE = 1;
-    private static final int NEUTRAL_FIELD = 3;
-    private static final Map<Integer, String> figures = Map.of(NEUTRAL_FIELD, " ", PLAYER_BLACK, "B", PLAYER_WHITE, "W");
-    private static final int[][] directions = {{-1, -1}, {0, -1}, {1, -1}, {-1, 0}, {1, 0}, {-1, 1}, {0, 1}, {1, 1}};
+    /**
+     * Number of squares in the game
+     */
+    public static final int NUM_SQUARES = 64;
+    /**
+     * Unicode character for a black disc.
+     */
+    private static final char BLACK_STONE = '\u25C9';
+    /**
+     * Unicode character for a white disc.
+     */
+    private static final char WHITE_STONE = '\u25CE';
+    /**
+     * Bitboard of the black stones at the start of the game.
+     */
+    private static final long INIT_BLACK_BB = 34628173824L;
+    /**
+     * Bitboard of the white stones at the start of the game.
+     */
+    private static final long INIT_WHITE_BB = 68853694464L;
+    /**
+     * Bitboard of the legal moves at the start of the game. (For the black player)
+     */
+    private static final Long INIT_LEGAL_BB = 17729692631040L;
     public static final int BOARD_SIZE = 8;
-    private final List[] playerMoves;
-    protected int[][] board;
-    private int round;
-    private int state;
+    // X  X  X  X  X  X  X  -
+    // X  X  X  X  X  X  X  -
+    // X  X  X  X  X  X  X  -
+    // X  X  X  X  X  X  X  -
+    // X  X  X  X  X  X  X  -
+    // X  X  X  X  X  X  X  -
+    // X  X  X  X  X  X  X  -
+    // X  X  X  X  X  X  X  -
+    public static final long RIGHT_MASK = 9187201950435737471L;
+
+    // -  X  X  X  X  X  X  X
+    // -  X  X  X  X  X  X  X
+    // -  X  X  X  X  X  X  X
+    // -  X  X  X  X  X  X  X
+    // -  X  X  X  X  X  X  X
+    // -  X  X  X  X  X  X  X
+    // -  X  X  X  X  X  X  X
+    // -  X  X  X  X  X  X  X
+    public static final long LEFT_MASK = -72340172838076674L;
+
+    // -  -  -  -  -  -  -  -
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    public static final long UP_MASK = -256L;
+
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // -  -  -  -  -  -  -  -
+    public static final long DOWN_MASK = 72057594037927935L;
+
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    // X  X  X  X  X  X  X  X
+    private static final long PASS = -1L;
+    /**
+     * Bitboard for the black discs.
+     */
+    private long blackBB;
+
+    /**
+     * Bitboard of the white discs.
+     */
+    private long whiteBB;
+
+    /**
+     * Bitboard for the currentPlayer.
+     */
+    private long legal;
+    private boolean movesArrayUpdated = false;
+    private long[] movesArray = null;
+    private final long[] allCellsArray = new long[NUM_SQUARES];
+    private final long[] tmpCellsArray = new long[NUM_SQUARES];
+    private int tmpCellsCount = 0;
+    private boolean gameOver;
     private int currentPlayer;
 
+
+
+
     public OthelloModel() {
-        this.playerMoves = new List<>[2];
-        this.playerMoves[0] = new ArrayList<>();
-        this.playerMoves[1] = new ArrayList<>();
         this.reset();
     }
 
-    public boolean move(int row, int col) {
-        ArrayList<Move> flips = getFlips(row, col);
-        if (flips.isEmpty() || this.state != -1) {
-            return false;
-        }
-        flips.add(new Move(row, col));
-        // flip the fields
-        for (Move flip : flips) {
-            board[flip.x][flip.y] = currentPlayer;
-        }
-        this.setupNextTurn();
-        this.setChanged();
-        this.notifyObservers(flips);
-        this.clearChanged();
-        return true;
-    }
 
-    private void playerMoves() {
-        ArrayList<Move> flips = new ArrayList<>();
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            for (int j = 0; j < BOARD_SIZE; j++) {
-                if (!getFlips(i, j).isEmpty()) {
-                    flips.add(new Move(i, j));
-                }
+    public void makeMove(int move)
+    {
+        int nMoves = getNumMoves();
+        long[] movesArray = getBitMovesArray();
 
-            }
-        }
-        this.playerMoves[currentPlayer].clear();
-        this.playerMoves[currentPlayer].addAll(flips);
-    }
+        if (move < 0 || move >= nMoves)
+            throw new IllegalArgumentException("Wrong move: " + move);
 
-    private ArrayList<Move> flipsInDirection(int row, int col, int rowDir, int colDir) {
-        ArrayList<Move> toBeFlipped = new ArrayList<>();
-        int currentRow = row + rowDir;
-        int currentCol = col + colDir;
-        if (currentRow == 8 || currentRow < 0 || currentCol == 8 || currentCol < 0) {
-            return toBeFlipped;
-        }
-        while (this.isSet(currentRow, currentCol)) {
-            if (board[currentRow][currentCol] == this.currentPlayer) {
-                while (!(row == currentRow && col == currentCol)) {
-                    if (board[currentRow][currentCol] != this.currentPlayer) {
-                        toBeFlipped.add(new Move(currentRow, currentCol));
-                    }
-                    currentRow = currentRow - rowDir;
-                    currentCol = currentCol - colDir;
-                }
-                break;
-            } else {
-                currentRow = currentRow + rowDir;
-                currentCol = currentCol + colDir;
+        long theMove = movesArray[move];
+
+        if (theMove != PASS)
+        {
+            long next; // potential moves
+            long lastCell;
+            long oppBoard = opponentBoard();
+            long curBoard = currentBoard();
+            setCurrentBoard(currentBoard() | theMove); // place the new stone on the board
+            int allCellsCount = 0;
+
+            // UP
+            lastCell = 0L;
+            tmpCellsCount = 0;
+            next = (theMove >> BOARD_SIZE) & DOWN_MASK & oppBoard;
+
+            while (next != 0L)
+            {
+                tmpCellsArray[tmpCellsCount++] = next;
+                long tmp = (next >> BOARD_SIZE) & DOWN_MASK;
+                lastCell = tmp & curBoard;
+                next = tmp & oppBoard;
             }
 
-            if (currentRow < 0 || currentCol < 0 || currentRow == 8 || currentCol == 8) {
-                break;
+            if (lastCell != 0L)
+                for (int i = 0; i < tmpCellsCount; i++)
+                    allCellsArray[allCellsCount++] = tmpCellsArray[i];
+
+            // DOWN
+            lastCell = 0L;
+            tmpCellsCount = 0;
+            next = (theMove << BOARD_SIZE) & UP_MASK & oppBoard;
+
+            while (next != 0L)
+            {
+                tmpCellsArray[tmpCellsCount++] = next;
+                long tmp = (next << BOARD_SIZE) & UP_MASK;
+                lastCell = tmp & curBoard;
+                next = tmp & oppBoard;
+            }
+
+            if (lastCell != 0L)
+                for (int i = 0; i < tmpCellsCount; i++)
+                    allCellsArray[allCellsCount++] = tmpCellsArray[i];
+
+            // LEFT
+            lastCell = 0L;
+            tmpCellsCount = 0;
+            next = (theMove >> 1L) & RIGHT_MASK & oppBoard;
+
+            while (next != 0L)
+            {
+                tmpCellsArray[tmpCellsCount++] = next;
+                long tmp = (next >> 1L) & RIGHT_MASK;
+                lastCell = tmp & curBoard;
+                next = tmp & oppBoard;
+            }
+
+            if (lastCell != 0L)
+                for (int i = 0; i < tmpCellsCount; i++)
+                    allCellsArray[allCellsCount++] = tmpCellsArray[i];
+
+            // RIGHT
+            lastCell = 0L;
+            tmpCellsCount = 0;
+            next = (theMove << 1L) & LEFT_MASK & oppBoard;
+
+            while (next != 0L)
+            {
+                tmpCellsArray[tmpCellsCount++] = next;
+                long tmp = (next << 1L) & LEFT_MASK;
+                lastCell = tmp & curBoard;
+                next = tmp & oppBoard;
+            }
+
+            if (lastCell != 0L)
+                for (int i = 0; i < tmpCellsCount; i++)
+                    allCellsArray[allCellsCount++] = tmpCellsArray[i];
+
+            // TOP LEFT
+            lastCell = 0L;
+            tmpCellsCount = 0;
+            next = (theMove >> (BOARD_SIZE + 1L)) & RIGHT_MASK & DOWN_MASK & oppBoard;
+
+            while (next != 0L)
+            {
+                tmpCellsArray[tmpCellsCount++] = next;
+                long tmp = (next >> (BOARD_SIZE + 1L)) & RIGHT_MASK & DOWN_MASK;
+                lastCell = tmp & curBoard;
+                next = tmp & oppBoard;
+            }
+
+            if (lastCell != 0L)
+                for (int i = 0; i < tmpCellsCount; i++)
+                    allCellsArray[allCellsCount++] = tmpCellsArray[i];
+
+            // TOP RIGHT
+            lastCell = 0L;
+            tmpCellsCount = 0;
+            next = (theMove >> (BOARD_SIZE - 1L)) & LEFT_MASK & DOWN_MASK & oppBoard;
+
+            while (next != 0L)
+            {
+                tmpCellsArray[tmpCellsCount++] = next;
+                long tmp = (next >> (BOARD_SIZE - 1L)) & LEFT_MASK & DOWN_MASK;
+                lastCell = tmp & curBoard;
+                next = tmp & oppBoard;
+            }
+
+            if (lastCell != 0L)
+                for (int i = 0; i < tmpCellsCount; i++)
+                    allCellsArray[allCellsCount++] = tmpCellsArray[i];
+
+            // DOWN LEFT
+            lastCell = 0L;
+            tmpCellsCount = 0;
+            next = (theMove << (BOARD_SIZE - 1L)) & RIGHT_MASK & UP_MASK & oppBoard;
+
+            while (next != 0L)
+            {
+                tmpCellsArray[tmpCellsCount++] = next;
+                long tmp = (next << (BOARD_SIZE - 1L)) & RIGHT_MASK & UP_MASK;
+                lastCell = tmp & curBoard;
+                next = tmp & oppBoard;
+            }
+
+            if (lastCell != 0L)
+                for (int i = 0; i < tmpCellsCount; i++)
+                    allCellsArray[allCellsCount++] = tmpCellsArray[i];
+
+            // DOWN RIGHT
+            lastCell = 0L;
+            tmpCellsCount = 0;
+            next = (theMove << (BOARD_SIZE + 1L)) & LEFT_MASK & UP_MASK & oppBoard;
+
+            while (next != 0L)
+            {
+                tmpCellsArray[tmpCellsCount++] = next;
+                long tmp = (next << (BOARD_SIZE + 1L)) & LEFT_MASK & UP_MASK;
+                lastCell = tmp & curBoard;
+                next = tmp & oppBoard;
+            }
+
+            if (lastCell != 0L)
+                for (int i = 0; i < tmpCellsCount; i++)
+                    allCellsArray[allCellsCount++] = tmpCellsArray[i];
+
+            // flip the stones
+            for (int i = 0; i < allCellsCount; i++)
+            {
+                setCurrentBoard(currentBoard() | allCellsArray[i]);
+                setOpponentBoard(opponentBoard() & ~allCellsArray[i]);
             }
         }
-        return toBeFlipped;
+
+        currentPlayer = (currentPlayer + 1) % 2;
+        calculateMoves();
+
+        if (Long.bitCount(legal) == 0)
+        {
+            currentPlayer = (currentPlayer + 1) % 2;
+            calculateMoves();
+
+            if (Long.bitCount(legal) == 0)
+                gameOver = true;
+            else
+                legal = PASS;
+
+            currentPlayer = (currentPlayer + 1) % 2;
+        }
+
+    }
+
+    private void calculateMoves() {
+        this.legal = 0L;
+        long potentialMoves;
+        long curBoard = currentBoard();
+        long oppBoard = opponentBoard();
+        long emptyBoard = emptyBoard();
+
+        // UP
+        potentialMoves = (curBoard >> BOARD_SIZE) & DOWN_MASK & oppBoard;
+
+        while (potentialMoves != 0L) {
+            long tmp = (potentialMoves >> BOARD_SIZE) & DOWN_MASK;
+            legal |= tmp & emptyBoard;
+            potentialMoves = tmp & oppBoard;
+        }
+
+        // DOWN
+        potentialMoves = (curBoard << BOARD_SIZE) & UP_MASK & oppBoard;
+
+        while (potentialMoves != 0L) {
+            long tmp = (potentialMoves << BOARD_SIZE) & UP_MASK;
+            legal |= tmp & emptyBoard;
+            potentialMoves = tmp & oppBoard;
+        }
+
+        // LEFT
+        potentialMoves = (curBoard >> 1L) & RIGHT_MASK & oppBoard;
+
+        while (potentialMoves != 0L) {
+            long tmp = (potentialMoves >> 1L) & RIGHT_MASK;
+            legal |= tmp & emptyBoard;
+            potentialMoves = tmp & oppBoard;
+        }
+
+        // RIGHT
+        potentialMoves = (curBoard << 1L) & LEFT_MASK & oppBoard;
+
+        while (potentialMoves != 0L) {
+            long tmp = (potentialMoves << 1L) & LEFT_MASK;
+            legal |= tmp & emptyBoard;
+            potentialMoves = tmp & oppBoard;
+        }
+
+        // UP LEFT
+        potentialMoves = (curBoard >> (BOARD_SIZE + 1L)) & RIGHT_MASK & DOWN_MASK & oppBoard;
+
+        while (potentialMoves != 0L) {
+            long tmp = (potentialMoves >> (BOARD_SIZE + 1L)) & RIGHT_MASK & DOWN_MASK;
+            legal |= tmp & emptyBoard;
+            potentialMoves = tmp & oppBoard;
+        }
+
+        // UP RIGHT
+        potentialMoves = (curBoard >> (BOARD_SIZE - 1L)) & LEFT_MASK & DOWN_MASK & oppBoard;
+
+        while (potentialMoves != 0L) {
+            long tmp = (potentialMoves >> (BOARD_SIZE - 1L)) & LEFT_MASK & DOWN_MASK;
+            legal |= tmp & emptyBoard;
+            potentialMoves = tmp & oppBoard;
+        }
+
+        // DOWN LEFT
+        potentialMoves = (curBoard << (BOARD_SIZE - 1L)) & RIGHT_MASK & UP_MASK & oppBoard;
+
+        while (potentialMoves != 0L) {
+            long tmp = (potentialMoves << (BOARD_SIZE - 1L)) & RIGHT_MASK & UP_MASK;
+            legal |= tmp & emptyBoard;
+            potentialMoves = tmp & oppBoard;
+        }
+
+        // DOWN RIGHT
+        potentialMoves = (curBoard << (BOARD_SIZE + 1L)) & LEFT_MASK & UP_MASK & oppBoard;
+
+        while (potentialMoves != 0L) {
+            long tmp = (potentialMoves << (BOARD_SIZE + 1L)) & LEFT_MASK & UP_MASK;
+            this.legal |= tmp & emptyBoard;
+            potentialMoves = tmp & oppBoard;
+        }
+
+        movesArrayUpdated = false;
+    }
+
+    private long emptyBoard() {
+        return ~(blackBB | whiteBB);
+    }
+
+    private long currentBoard() {
+        return currentPlayer == 0 ? blackBB : whiteBB;
+    }
+
+    private long opponentBoard() {
+        return currentPlayer == 0 ? whiteBB : blackBB;
+    }
+
+    private void setCurrentBoard(long bitboard) {
+        if (currentPlayer == 0)
+            blackBB = bitboard;
+        else
+            whiteBB = bitboard;
+    }
+
+    private void setOpponentBoard(long bitboard) {
+        if (currentPlayer == 0)
+            whiteBB = bitboard;
+        else
+            blackBB = bitboard;
+    }
+
+    public Square getSquare(int squareIndex) {
+        // blackBB stone in the cell
+        if ((blackBB & (1L << squareIndex)) != 0L)
+            return Square.BLACK;
+
+        // whiteBB stone in the cell
+        if ((whiteBB & (1L << squareIndex)) != 0L)
+            return Square.WHITE;
+
+        // no stones in the cell
+        return Square.EMPTY;
     }
 
 
-    private ArrayList<Move> getFlips(int row, int col) {
-        ArrayList<Move> flips = new ArrayList<>();
-        // is it on the board
-        if (!this.isOnField(row, col)) {
-            return flips;
-        }
-        // is the field set already
-        if (this.board[row][col] != NEUTRAL_FIELD) {
-            return flips;
-        }
-
-
-        for (int[] dir : directions) {
-            flips.addAll(this.flipsInDirection(row, col, dir[0], dir[1]));
-        }
-        return flips;
-    }
-
-    private void setupNextTurn() {
-        this.round++;
-        this.nextPlayer();
-        this.playerMoves();
-        if (this.playerMoves[currentPlayer].isEmpty()){
-            System.out.println("player had to pass");
-            this.nextPlayer();
-            this.playerMoves();
-            if (this.playerMoves[currentPlayer].isEmpty()){
-                this.selectWinner();
-            }
-        }
-        if (round == 64) {
-            this.selectWinner();
-        }
-    }
-
-    private void selectWinner(){
-        if (this.countFieldsOfColor(PLAYER_BLACK) > this.countFieldsOfColor(PLAYER_WHITE))
-            this.state = PLAYER_BLACK;
-        else if (this.countFieldsOfColor(PLAYER_BLACK) < this.countFieldsOfColor(PLAYER_WHITE)) {
-            this.state = PLAYER_WHITE;
-        } else {
-            this.state = 2;
-        }
-    }
     public void reset() {
-        this.board = new int[BOARD_SIZE][BOARD_SIZE];
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            for (int j = 0; j < BOARD_SIZE; j++) {
-                this.board[i][j] = 3;
-            }
-        }
-        this.board[3][3] = PLAYER_WHITE;
-        this.board[3][4] = PLAYER_BLACK;
-        this.board[4][3] = PLAYER_BLACK;
-        this.board[4][4] = PLAYER_WHITE;
-        this.round = 0;
-        this.state = -1;
-        this.currentPlayer = PLAYER_BLACK;
-        this.playerMoves[0].clear();
-        this.playerMoves[1].clear();
-        this.playerMoves();
-
+        currentPlayer = 0;
+        gameOver = false;
+        blackBB = INIT_BLACK_BB;
+        whiteBB = INIT_WHITE_BB;
+        legal = INIT_LEGAL_BB;
+        // caching
+        movesArrayUpdated = false;
     }
 
     public String gameStatus() {
-        return switch (this.state) {
-            case -1 -> "The game is still going!";
-            case PLAYER_BLACK -> "Black won the game!";
-            case PLAYER_WHITE -> "White won the game!";
-            case 2 -> " The game ended in a draw!";
-            default -> "Something went wrong";
-        };
+
+            if (!gameOver)
+                return "The game is yet to be decided!";
+
+            int blackStonesCount = Long.bitCount(blackBB);
+            int whiteStonesCount = Long.bitCount(whiteBB);
+
+            if (blackStonesCount > whiteStonesCount)
+                return "Black Won!";
+
+            if (whiteStonesCount > blackStonesCount)
+                return "White Won!";
+
+            return "The Game Ended In A Draw!";
+
     }
 
-    public void printBoard() {
-        StringBuilder result = new StringBuilder();
-        for (int[] row : this.board) {
-            for (int value : row) {
-                result.append(figures.get(value)).append(" | ");
-            }
-            result = new StringBuilder(result.substring(0, result.length() - 2));
-            result.append("\n");
-        }
-        System.out.println(result);
-    }
-
-    public String getCurrentPlayerLabel() {
-        if (this.currentPlayer == PLAYER_BLACK){
+    public String getCurrentPlayer() {
+        if (this.currentPlayer == PLAYER_BLACK) {
             return "BLACK";
-        }
-        else{
+        } else {
             return "WHITE";
         }
     }
 
-    private boolean isOnField(int row, int col) {
-        return row < BOARD_SIZE && row >= 0 && col < BOARD_SIZE && col >= 0;
-    }
+    public String getSquareColor(int squareIndex) {
 
-    private boolean isSet(int row, int col) {
-        return this.isOnField(row, col) && this.board[row][col] != NEUTRAL_FIELD;
+        // blackBB stone in the cell
+        if ((blackBB & (1L << squareIndex)) != 0L)
+            return "#000000";
 
-    }
+        // whiteBB stone in the cell
+        if ((whiteBB & (1L << squareIndex)) != 0L)
+            return "#ffffff";
 
-    public String getFieldColor(int row, int col) {
-        return switch (this.board[row][col]) {
-            case PLAYER_BLACK -> "#000000";
-            case PLAYER_WHITE -> "#ffffff";
-            default -> "#808080";
-        };
+        // no stones in the cell
+        return "#808080";
 
     }
 
-    private void nextPlayer() {
-            this.currentPlayer = this.currentPlayer == PLAYER_BLACK ? PLAYER_WHITE : PLAYER_BLACK;
-    }
+    private long[] getBitMovesArray() {
+        if (movesArray == null)
+            movesArray = new long[NUM_SQUARES];
 
-    public List<Move> getPossibleMovesCurrentPlayer () {
-        return this.playerMoves[this.currentPlayer];
-    }
+        if (!movesArrayUpdated) {
+            if (legal == PASS)
+                movesArray[0] = PASS;
+            else
+                for (int i = 0, count = 0; i < NUM_SQUARES; i++)
+                    if ((legal & (1L << i)) != 0L)
+                        movesArray[count++] = 1L << i;
 
-    private int countFieldsOfColor(int player) {
-        int counter = 0;
-        for (int i = 0; i < BOARD_SIZE; i++) {
-            for (int j = 0; j < BOARD_SIZE; j++) {
-                if (board[i][j] == player){
-                    counter ++;
-                }
-            }
+            movesArrayUpdated = true;
         }
-        return counter;
+
+        return movesArray;
+    }
+
+    public OthelloModel copy() {
+        OthelloModel newOthello = new OthelloModel();
+        newOthello.currentPlayer = currentPlayer;
+        newOthello.gameOver = gameOver;
+        newOthello.blackBB = blackBB;
+        newOthello.whiteBB = whiteBB;
+        newOthello.legal = legal;
+
+        return newOthello;
+    }
+
+    public int getNumMoves() {
+        return legal == PASS ? 1 : Long.bitCount(legal);
+    }
+
+    @Override
+    public String toString()
+    {
+        return getGameInfo() +
+                getColumnHeaders() +
+                getBoardStr() +
+                getColumnHeaders();
+    }
+
+    private String getColumnHeaders()
+    {
+        StringBuilder builder = new StringBuilder("   ");
+
+        for (int col = 0; col < BOARD_SIZE; col++)
+            builder.append((" " + OthelloUtil.colToChar(col)  + " "));
+
+        builder.append("\n");
+
+        return builder.toString();
+    }
+
+    private char cellToChar(int cellIndex)
+    {
+        if ((blackBB & (1L << cellIndex)) != 0)
+            return BLACK_STONE;
+        else if ((whiteBB & (1L << cellIndex)) != 0)
+            return WHITE_STONE;
+        else if ((legal & (1L << cellIndex)) != 0)
+            return 'x';
+
+        return '-';
+    }
+
+    private String getBoardStr()
+    {
+        StringBuilder builder = new StringBuilder();
+
+        for (int cellIndex = 0; cellIndex < NUM_SQUARES; cellIndex++)
+        {
+            if (cellIndex % BOARD_SIZE == 0)
+                builder.append((" " + OthelloUtil.cellToRowNum(cellIndex) + " "));
+
+            builder.append((" " + cellToChar(cellIndex) + " "));
+
+            if (cellIndex % BOARD_SIZE == BOARD_SIZE - 1)
+                builder.append((" " + OthelloUtil.cellToRowNum(cellIndex) + " \n"));
+        }
+
+        return builder.toString();
+    }
+
+    private String getGameInfo()
+    {
+        return String.format("Turn: %s\n", curPlayerStr()) +
+                String.format("Black count: %d\n", Long.bitCount(blackBB)) +
+                String.format("White count: %d\n", Long.bitCount(whiteBB)) +
+                ("Legal moves: " + Arrays.toString(getMoves()) + "\n\n");
+    }
+
+    public String[] getMoves()
+    {
+        List<String> othelloMoves = new ArrayList<>();
+        long[] bitMovesArray = getBitMovesArray();
+        int nMoves = getNumMoves();
+
+        if (nMoves == 1 && bitMovesArray[0] == PASS)
+            othelloMoves.add("PASS");
+        else
+            for (int i = 0; i < nMoves; i++) {
+                int cellIndex = Long.numberOfTrailingZeros(bitMovesArray[i]);
+                othelloMoves.add(OthelloUtil.cellToStr(cellIndex));
+            }
+
+        return othelloMoves.toArray(new String[0]);
+    }
+
+    public int[] getIndexMoves() {
+        List<Integer> othelloMoves = new ArrayList<>();
+        long[] bitMovesArray = getBitMovesArray();
+        int nMoves = getNumMoves();
+
+        if (nMoves == 1 && bitMovesArray[0] == PASS)
+            return new int[0];
+        else
+            for (int i = 0; i < nMoves; i++) {
+                int cellIndex = Long.numberOfTrailingZeros(bitMovesArray[i]);
+                othelloMoves.add(cellIndex);
+            }
+
+        return othelloMoves.stream().mapToInt(i -> i).toArray();
+    }
+
+    private String curPlayerStr()
+    {
+        return currentPlayer == 0 ? "Black" : "White";
+    }
+
+    public boolean isRunning() {
+        return !gameOver;
     }
 }
+
