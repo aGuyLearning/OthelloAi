@@ -7,6 +7,8 @@ import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
 import othello.game.OthelloModel;
+import othello.player.AiPlayer;
+import szte.mi.Move;
 
 import java.net.URL;
 import java.util.*;
@@ -22,16 +24,19 @@ public class OthelloGuiController implements Initializable {
     private final OthelloModel game;
     private final Button[] fields;
     private int[] possibleMoves;
+    private AiPlayer ai;
 
     public OthelloGuiController() {
         this.game = new OthelloModel();
         this.possibleMoves = new int[0];
         this.fields = new Button[NUM_SQUARES];
+        this.ai = new AiPlayer();
     }
 
     @FXML
     protected void onResetButtonClick() {
         this.game.reset();
+        ai.init(1,0,new Random());
         this.setupBoard();
         this.updateUI();
 
@@ -45,7 +50,6 @@ public class OthelloGuiController implements Initializable {
                 int squareIndex = i * OthelloModel.BOARD_SIZE + j;
                 this.fields[squareIndex] = b;
                 this.setBtnColor(squareIndex);
-                b.setText(String.valueOf(squareIndex));
                 b.setPrefSize(100, 100);
                 this.gameBoard.add(b, j, i);
             }
@@ -100,9 +104,27 @@ public class OthelloGuiController implements Initializable {
         }
 
         gameStatus.setText(game.gameStatus());
-        System.out.println(game);
         if (game.isRunning()) {
             playerTurn.setText("It is " + game.getCurrentPlayer() + "'s turn");
+            if (game.getCurrent() == OthelloModel.PLAYER_WHITE){
+                int cell = (int) game.getLastCellChanged();
+                int row = cell / OthelloModel.BOARD_SIZE;
+                int col = cell - row * OthelloModel.BOARD_SIZE;
+                Move aiMove = ai.nextMove(new Move(col, row),0,0);
+                if (aiMove != null && game.isRunning()) {
+                    int cellIndex = aiMove.y * OthelloModel.BOARD_SIZE + aiMove.x;
+                    int[] m = game.getIndexMoves();
+                    for (int i = 0; i < m.length; i++) {
+                        if (m[i] == cellIndex) {
+                            game.makeMove(i);
+                            break;
+                        }
+                    }
+                } else if (aiMove == null && game.isRunning()) {
+                    game.makeMove(0);
+                }
+                updateUI();
+            }
         }
         else {
             playerTurn.setText("");

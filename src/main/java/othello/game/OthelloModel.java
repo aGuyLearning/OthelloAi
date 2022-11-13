@@ -3,8 +3,8 @@ package othello.game;
 import java.util.*;
 
 public class OthelloModel {
-    private static final int PLAYER_BLACK = 0;
-    private static final int PLAYER_WHITE = 1;
+    public static final int PLAYER_BLACK = 0;
+    public static final int PLAYER_WHITE = 1;
     /**
      * Number of squares in the game
      */
@@ -78,7 +78,7 @@ public class OthelloModel {
     // X  X  X  X  X  X  X  X
     // X  X  X  X  X  X  X  X
     // X  X  X  X  X  X  X  X
-    private static final long PASS = -1L;
+    public static final long PASS = -1L;
     /**
      * Bitboard for the black discs.
      */
@@ -102,7 +102,7 @@ public class OthelloModel {
     private int currentPlayer;
 
 
-
+    long lastCellChanged;
 
     public OthelloModel() {
         this.reset();
@@ -121,6 +121,7 @@ public class OthelloModel {
 
         if (theMove != PASS)
         {
+            this.lastCellChanged = getIndexMoves()[move];
             long next; // potential moves
             long lastCell;
             long oppBoard = opponentBoard();
@@ -158,9 +159,11 @@ public class OthelloModel {
                 next = tmp & oppBoard;
             }
 
-            if (lastCell != 0L)
-                for (int i = 0; i < tmpCellsCount; i++)
+            if (lastCell != 0L) {
+                for (int i = 0; i < tmpCellsCount; i++) {
                     allCellsArray[allCellsCount++] = tmpCellsArray[i];
+                }
+            }
 
             // LEFT
             lastCell = 0L;
@@ -175,9 +178,11 @@ public class OthelloModel {
                 next = tmp & oppBoard;
             }
 
-            if (lastCell != 0L)
-                for (int i = 0; i < tmpCellsCount; i++)
+            if (lastCell != 0L) {
+                for (int i = 0; i < tmpCellsCount; i++) {
                     allCellsArray[allCellsCount++] = tmpCellsArray[i];
+                }
+            }
 
             // RIGHT
             lastCell = 0L;
@@ -273,6 +278,7 @@ public class OthelloModel {
         }
 
         currentPlayer = (currentPlayer + 1) % 2;
+
         calculateMoves();
 
         if (Long.bitCount(legal) == 0)
@@ -398,20 +404,6 @@ public class OthelloModel {
             blackBB = bitboard;
     }
 
-    public Square getSquare(int squareIndex) {
-        // blackBB stone in the cell
-        if ((blackBB & (1L << squareIndex)) != 0L)
-            return Square.BLACK;
-
-        // whiteBB stone in the cell
-        if ((whiteBB & (1L << squareIndex)) != 0L)
-            return Square.WHITE;
-
-        // no stones in the cell
-        return Square.EMPTY;
-    }
-
-
     public void reset() {
         currentPlayer = 0;
         gameOver = false;
@@ -440,11 +432,34 @@ public class OthelloModel {
 
     }
 
+    public int checkStatus() {
+        if (!gameOver)
+            return -1;
+
+        int blackStonesCount = Long.bitCount(blackBB);
+        int whiteStonesCount = Long.bitCount(whiteBB);
+
+        if (blackStonesCount > whiteStonesCount)
+            return PLAYER_BLACK;
+
+        if (whiteStonesCount > blackStonesCount)
+            return PLAYER_WHITE;
+
+        return 3;
+    }
+
     public String getCurrentPlayer() {
         if (this.currentPlayer == PLAYER_BLACK) {
             return "BLACK";
         } else {
             return "WHITE";
+        }
+    }
+    public int getOpponent(){
+        if (this.currentPlayer == PLAYER_BLACK) {
+            return PLAYER_BLACK;
+        }else {
+            return PLAYER_WHITE;
         }
     }
 
@@ -595,6 +610,24 @@ public class OthelloModel {
 
     public boolean isRunning() {
         return !gameOver;
+    }
+
+    public long getLastCellChanged() {
+        return lastCellChanged;
+    }
+
+    public int getCurrent() {
+       return this.currentPlayer;
+    }
+
+    public boolean isPass(){
+        String[] moves = getMoves();
+        if (moves.length == 0){
+            return true;
+        }
+        else {
+            return getMoves()[0] == "PASS";
+        }
     }
 }
 

@@ -10,4 +10,8 @@ module othello.othello {
     exports othello.gui;
     exports othello.game;
     opens othello.game to javafx.fxml;
+    exports othello.player;
+    opens othello.player to javafx.fxml;
+    exports szte.mi;
+    opens szte.mi to javafx.fxml;
 }
