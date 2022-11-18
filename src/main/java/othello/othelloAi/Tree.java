@@ -1,4 +1,6 @@
-package othello.player;
+package othello.othelloAi;
+
+import othello.othelloAi.Node;
 
 public class Tree {
     Node root;

@@ -1,4 +1,4 @@
-package othello.game;
+package othello.othelloAi;
 
 import java.util.*;
 

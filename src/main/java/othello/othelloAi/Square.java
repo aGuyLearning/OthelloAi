@@ -1,4 +1,4 @@
-package othello.game;
+package othello.othelloAi;
 
 public enum Square
 {

@@ -1,6 +1,4 @@
-package othello.player;
-
-import othello.game.OthelloModel;
+package othello.othelloAi;
 
 import java.util.ArrayList;
 import java.util.List;

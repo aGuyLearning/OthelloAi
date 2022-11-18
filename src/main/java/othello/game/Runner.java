@@ -1,7 +1,8 @@
 package othello.game;
 
+import othello.othelloAi.OthelloModel;
 import szte.mi.Move;
-import othello.player.AiPlayer;
+import othello.othelloAi.AiPlayer;
 
 import java.util.Random;
 

@@ -6,8 +6,8 @@ import javafx.scene.control.Alert;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.GridPane;
-import othello.game.OthelloModel;
-import othello.player.AiPlayer;
+import othello.othelloAi.OthelloModel;
+import othello.othelloAi.AiPlayer;
 import szte.mi.Move;
 
 import java.net.URL;

@@ -1,4 +1,4 @@
-package othello.game;
+package othello.othelloAi;
 
 public class OthelloUtil {
     private static final int BOARD_SIZE = 8;

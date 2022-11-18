@@ -1,4 +1,6 @@
-package othello.player;
+package othello.othelloAi;
+
+import othello.othelloAi.Node;
 
 import java.util.Collections;
 import java.util.Comparator;

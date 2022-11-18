@@ -1,4 +1,4 @@
-package othello.player;
+package othello.othelloAi;
 
 import java.util.List;
 
