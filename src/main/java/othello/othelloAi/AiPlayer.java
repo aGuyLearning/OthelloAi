@@ -10,7 +10,6 @@ public class AiPlayer implements Player {
     private int order;
     private Random rnd;
     private MonteCarloTreeSearch mcts;
-    private int rounds;
 
     @Override
     public void init(int order, long t, Random rnd) {
@@ -18,7 +17,6 @@ public class AiPlayer implements Player {
         this.order = order;
         this.rnd = rnd;
         this.mcts = new MonteCarloTreeSearch(rnd);
-        this.rounds = 0;
     }
 
     @Override
@@ -33,14 +31,13 @@ public class AiPlayer implements Player {
                     break;
                 }
             }
-        } else {
-            if (this.game.isRunning()) {
-                this.game.makeMove(0);
-            }
         }
+        else if(prevMove == null && game.getRound() != 0 && game.isRunning()){
+            game.makeMove(0);
+        }
+
         if (game.getCurrent() == this.order && !game.isPass() && this.game.isRunning()) {
-            if (this.rounds <= 8) {
-                this.rounds++;
+            if (game.getRound() <= 12) {
                 int numMoves = this.game.getNumMoves();
                 int ind = numMoves > 1 ? rnd.nextInt(numMoves - 1) : 0;
                 game.makeMove(ind);
@@ -52,16 +49,23 @@ public class AiPlayer implements Player {
                 }
 
             } else {
-                this.rounds++;
-                this.game = mcts.findNextMove(game, order);
+                int level = game.getRound() > 40 && game.getRound() < 55? 2 : 1;
+                mcts.setLevel(level);
+                // this.game = mcts.findNextMove(game, order);
+                game.makeMove(MiniMaxAlpha.getBestMove(game));
+
                 long theMove = game.getLastCellChanged();
                 if (theMove != OthelloModel.PASS) {
                     long row = theMove / OthelloModel.BOARD_SIZE;
                     long col = theMove - OthelloModel.BOARD_SIZE * row;
                     return new Move((int) col, (int) row);
                 }
+
             }
 
+        }
+        if (this.game.isPass() && game.isRunning()){
+            this.game.makeMove(0);
         }
         return null;
     }

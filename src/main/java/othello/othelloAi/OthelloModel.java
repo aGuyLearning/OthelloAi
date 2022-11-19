@@ -100,8 +100,7 @@ public class OthelloModel {
     private int tmpCellsCount = 0;
     private boolean gameOver;
     private int currentPlayer;
-
-
+    private int round;
     long lastCellChanged;
 
     public OthelloModel() {
@@ -111,6 +110,7 @@ public class OthelloModel {
 
     public void makeMove(int move)
     {
+        this.round ++;
         int nMoves = getNumMoves();
         long[] movesArray = getBitMovesArray();
 
@@ -410,6 +410,7 @@ public class OthelloModel {
         blackBB = INIT_BLACK_BB;
         whiteBB = INIT_WHITE_BB;
         legal = INIT_LEGAL_BB;
+        this.round = 0;
         // caching
         movesArrayUpdated = false;
     }
@@ -503,6 +504,7 @@ public class OthelloModel {
         newOthello.blackBB = blackBB;
         newOthello.whiteBB = whiteBB;
         newOthello.legal = legal;
+        newOthello.round = round;
 
         return newOthello;
     }
@@ -628,6 +630,23 @@ public class OthelloModel {
         else {
             return getMoves()[0] == "PASS";
         }
+    }
+
+    public int getRound() {
+        return round;
+    }
+
+    public double evaluateBoard(){
+        int blackStonesCount = Long.bitCount(blackBB);
+        int whiteStonesCount = Long.bitCount(whiteBB);
+        double parity = 100 * (blackStonesCount - whiteStonesCount ) / (blackStonesCount + whiteStonesCount);
+        if (blackStonesCount > whiteStonesCount)
+            return 10;
+
+        if (whiteStonesCount > blackStonesCount)
+            return -10;
+
+        return parity;
     }
 }
 

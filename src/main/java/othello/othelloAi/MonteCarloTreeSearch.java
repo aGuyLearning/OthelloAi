@@ -15,7 +15,7 @@ public class MonteCarloTreeSearch {
     private int opponent;
 
     public MonteCarloTreeSearch(Random rnd) {
-        this.level = 5;
+        this.level = 1;
         this.rnd = rnd;
     }
 

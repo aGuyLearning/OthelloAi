@@ -24,11 +24,13 @@ public class Runner {
                 long start = System.currentTimeMillis();
                 last = p2.nextMove(last, 0, 0);
                 System.out.println("Time of Lisa method execution: " + (((double)System.currentTimeMillis() - (double)start))/1_000_000_000);
+                System.out.println(last);
                 updateGame(game, last);
                 start = System.currentTimeMillis();
                 last = p1.nextMove(last, 0, 0);
                 System.out.println("Time of Carl method execution: " + (((double)System.currentTimeMillis() - (double)start))/1_000_000_000);
                 updateGame(game ,last);
+                System.out.println(last);
                 System.out.println(game);
             }
 

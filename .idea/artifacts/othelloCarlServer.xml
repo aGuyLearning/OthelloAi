@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="othelloCarlServer">
+    <output-path>$USER_HOME$/Downloads</output-path>
+    <root id="archive" name="othelloCarlServer.jar">
+      <element id="dir-copy" path="$PROJECT_DIR$/src/main/java/othello/othelloAi" />
+    </root>
+  </artifact>
+</component>
