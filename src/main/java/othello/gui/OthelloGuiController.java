@@ -24,7 +24,7 @@ public class OthelloGuiController implements Initializable {
     private final OthelloModel game;
     private final Button[] fields;
     private int[] possibleMoves;
-    private AiPlayer ai;
+    private final AiPlayer ai;
 
     public OthelloGuiController() {
         this.game = new OthelloModel();
@@ -73,7 +73,7 @@ public class OthelloGuiController implements Initializable {
             this.setBtnColor(index);
             this.fields[index].setOnAction(null);
         }
-        this.possibleMoves = game.getIndexMoves();
+        this.possibleMoves = game.getValidMovesIndexes();
         if (possibleMoves.length == 0){
             if(game.isRunning()) {
                 Alert alert = new Alert(Alert.AlertType.WARNING);
@@ -113,7 +113,7 @@ public class OthelloGuiController implements Initializable {
                 Move aiMove = ai.nextMove(new Move(col, row),0,0);
                 if (aiMove != null && game.isRunning()) {
                     int cellIndex = aiMove.y * OthelloModel.BOARD_SIZE + aiMove.x;
-                    int[] m = game.getIndexMoves();
+                    int[] m = game.getValidMovesIndexes();
                     for (int i = 0; i < m.length; i++) {
                         if (m[i] == cellIndex) {
                             game.makeMove(i);

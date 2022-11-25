@@ -44,14 +44,14 @@ public class Runner {
         }
         long endTime = System.nanoTime();
         System.out.println("Time of method execution: " + (((double)endTime - (double)startTime))/1_000_000_000);
-        System.out.println(String.format("The result is: \nBlack: %d\nWhite: %d", black, white));
+        System.out.printf("The result is: \nBlack: %d\nWhite: %d%n", black, white);
 
     }
 
     private static void updateGame(OthelloModel game, Move move) {
         if (move != null && game.isRunning()) {
             int cellIndex = move.y * OthelloModel.BOARD_SIZE + move.x;
-            int[] m = game.getIndexMoves();
+            int[] m = game.getValidMovesIndexes();
             for (int i = 0; i < m.length; i++) {
                 if (m[i] == cellIndex) {
                     game.makeMove(i);
