@@ -1,5 +1,6 @@
 package othello.game;
 
+import othello.AdverserialLearning.Lisa.KiPlayerMiniMax;
 import othello.othelloAi.OthelloModel;
 import szte.mi.Move;
 import othello.othelloAi.AiPlayer;
@@ -10,22 +11,30 @@ public class Runner {
     public static void main(String[] args) {
         int white = 0;
         int black = 0;
-        int rounds = 15;
+        int rounds = 3;
         Random rnd = new Random();
         OthelloModel game = new OthelloModel();
         AiPlayer p1 = new AiPlayer();
-        AiPlayer p2 = new AiPlayer();
+        KiPlayerMiniMax p2 = new KiPlayerMiniMax();
         long startTime = System.nanoTime();
         for (int i = 0; i < rounds; i++) {
             p1.init(1, 8, rnd);
             p2.init(0, 3, rnd);
             Move last = null;
             while (game.isRunning()) {
+                double start = System.nanoTime();
                 last = p2.nextMove(last, 0, 0);
+                double endTime = System.nanoTime();
+                double duration = (endTime - start) / 1000000000;  //divide by 1000000 to get milliseconds.
+                System.out.println("Finding the next move took: " + duration );
                 updateGame(game, last);
+                 start = System.nanoTime();
                 last = p1.nextMove(last, 0, 0);
+                endTime = System.nanoTime();
+                duration = (endTime - start) / 1000000000;  //divide by 1000000 to get milliseconds.
+                System.out.println("Finding the next move took: " + duration );
                 updateGame(game ,last);
-
+                System.out.println(game);
             }
 
             double winner = game.checkStatus();
@@ -55,6 +64,5 @@ public class Runner {
         } else if (move == null && game.isRunning()) {
             game.makeMove(0);
         }
-        System.out.println(game);
     }
 }

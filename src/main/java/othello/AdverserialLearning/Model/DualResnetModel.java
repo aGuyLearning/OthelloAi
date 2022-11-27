@@ -1,4 +1,4 @@
-package othello.DualResNetwork;
+package othello.AdverserialLearning.Model;
 
 
 import org.deeplearning4j.nn.graph.ComputationGraph;

@@ -1,4 +1,4 @@
-package othello.DualResNetwork;
+package othello.AdverserialLearning.Util;
 
 
 import org.nd4j.common.primitives.Pair;

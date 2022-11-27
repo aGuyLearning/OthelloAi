@@ -6,7 +6,7 @@ import othello.othelloAi.OthelloModel;
 import java.util.*;
 
 
-import static othello.DualResNetwork.AdversaryLearning.DRAW_VALUE;
+import static othello.AdverserialLearning.AdversaryLearning.DRAW_VALUE;
 
 
 public class Node {

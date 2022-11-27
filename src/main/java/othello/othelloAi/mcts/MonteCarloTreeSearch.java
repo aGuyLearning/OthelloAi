@@ -3,11 +3,9 @@ package othello.othelloAi.mcts;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
-import othello.DualResNetwork.AdversaryLearningConfiguration;
-import othello.DualResNetwork.AdversaryLearningConstants;
+import othello.AdverserialLearning.AdversaryLearningConfiguration;
 import othello.othelloAi.OthelloModel;
 
-import java.util.Arrays;
 import java.util.Random;
 
 /**
@@ -87,8 +85,7 @@ public class MonteCarloTreeSearch {
 
             moveProbabilities.putScalar(
                     visitedCountsMaximums.getInt(
-                            AdversaryLearningConstants.randomGenerator.nextInt((int) visitedCountsMaximums.length())),
-                    AdversaryLearningConstants.ONE);
+                            rnd.nextInt((int) visitedCountsMaximums.length())), 1);
 
             return moveProbabilities;
         }
@@ -117,7 +114,6 @@ public class MonteCarloTreeSearch {
             node = node.getChildWithMaxScore();
             game.makeMove(node.lastMove);
         }
-        OthelloModel currentBoard = game.copy();
         // Simulation
         INDArray[] neuralNetOutput = this.model.output(game.processedBoard());
 

@@ -1,4 +1,4 @@
-package othello.DualResNetwork;
+package othello.AdverserialLearning;
 
 import org.nd4j.linalg.api.ndarray.INDArray;
 

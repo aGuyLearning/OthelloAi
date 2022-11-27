@@ -4,7 +4,7 @@ import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
 import org.nd4j.linalg.indexing.INDArrayIndex;
 import org.nd4j.linalg.indexing.NDArrayIndex;
-import othello.DualResNetwork.AdversaryTrainingExample;
+import othello.AdverserialLearning.AdversaryTrainingExample;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +25,7 @@ public class OthelloUtil {
         return String.valueOf(col);
     }
 
-    static INDArray rotateBoard90(INDArray playgroundRotation) {
+    static synchronized INDArray rotateBoard90(INDArray playgroundRotation) {
 
         INDArray boardEmptyRotation = playgroundRotation.slice(0);
         INDArray maxPlayerRotation = rotate90(playgroundRotation.slice(1));
@@ -34,7 +34,7 @@ public class OthelloUtil {
         return createNewBoard(boardEmptyRotation, maxPlayerRotation, minPlayerRotation);
     }
 
-    static INDArray createNewBoard(INDArray newEmptyBoardPart, INDArray newMaxPlayerBoardPart, INDArray newMinPlayerBoardPart) {
+    static synchronized INDArray createNewBoard(INDArray newEmptyBoardPart, INDArray newMaxPlayerBoardPart, INDArray newMinPlayerBoardPart) {
 
         INDArray newPlaygroundRotation = Nd4j.create(3, BOARD_SIZE, BOARD_SIZE);
         newPlaygroundRotation.put(new INDArrayIndex[]{NDArrayIndex.point(0)}, newEmptyBoardPart);
@@ -44,7 +44,7 @@ public class OthelloUtil {
         return newPlaygroundRotation;
     }
 
-    static INDArray rotate90(INDArray toRotate) {
+    static synchronized INDArray rotate90(INDArray toRotate) {
 
         INDArray rotated90 = Nd4j.ones(toRotate.shape());
 
@@ -56,7 +56,7 @@ public class OthelloUtil {
         return rotated90;
     }
 
-    public static List<AdversaryTrainingExample> getSymmetries(INDArray board, INDArray actionProbabilities, int currentPlayer, int iteration) {
+    public static synchronized List<AdversaryTrainingExample> getSymmetries(INDArray board, INDArray actionProbabilities, int currentPlayer, int iteration) {
 
         List<AdversaryTrainingExample> symmetries = new ArrayList<>();
 
@@ -106,7 +106,7 @@ public class OthelloUtil {
         return symmetries;
     }
 
-    static INDArray mirrorBoardHorizontally(INDArray playgroundRotation) {
+    static synchronized INDArray mirrorBoardHorizontally(INDArray playgroundRotation) {
 
         INDArray boardPlayerMirrorHorizontal = playgroundRotation.slice(0);
         INDArray maxPlayerMirrorHorizontal = mirrorBoardPartHorizontally(playgroundRotation.slice(1));
@@ -116,7 +116,7 @@ public class OthelloUtil {
                 minPlayerMirrorHorizontal);
     }
     
-    private static INDArray mirrorBoardPartHorizontally(INDArray toMirror) {
+    private synchronized static INDArray mirrorBoardPartHorizontally(INDArray toMirror) {
 
         INDArray mirrorHorizontal = Nd4j.ones(toMirror.shape()).neg();
         mirrorHorizontal.put(new INDArrayIndex[]{NDArrayIndex.point(0)}, toMirror.slice(2));

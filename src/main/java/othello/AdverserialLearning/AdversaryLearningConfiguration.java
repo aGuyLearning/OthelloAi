@@ -1,11 +1,10 @@
-package othello.DualResNetwork;
+package othello.AdverserialLearning;
 
 import org.apache.commons.lang3.StringUtils;
-import org.deeplearning4j.nn.graph.ComputationGraph;
-import org.nd4j.linalg.schedule.ISchedule;
 
 import java.io.File;
 import java.nio.file.Paths;
+import java.util.Random;
 
 /**
  * {@link AdversaryLearningConfiguration} defines several configuration parameters
@@ -14,13 +13,16 @@ import java.nio.file.Paths;
  * @author evolutionsoft
  */
 public class AdversaryLearningConfiguration {
+  public static final long DEFAULT_SEED = 235711;
+
+  public static final Random randomGenerator = new Random(DEFAULT_SEED);
   public static double learningRate = 1e-4;
-  public static int batchSize = 16;
+  public static int batchSize = 32;
 
   public static double dirichletAlpha = 1.1;
   public static double dirichletWeight = 0.45;
   public static boolean alwaysUpdateNeuralNetwork = false;
-  public static int numberOfGamesToDecideUpdate = 6;
+  public static int numberOfGamesToDecideUpdate = 8;
   public static double gamesWinRatioThresholdNewNetworkUpdate = 0.55;
   public static int numberOfIterationsBeforePotentialUpdate = 10;
   public static int iterationStart = 1;
@@ -49,7 +51,7 @@ public class AdversaryLearningConfiguration {
       return 0;
     }
 
-    return (int) AdversaryLearningConstants.ONE;
+    return 1;
   }
 
   public static int getFromNumberOfIterationsTemperatureZero() {

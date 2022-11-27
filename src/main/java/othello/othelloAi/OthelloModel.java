@@ -651,9 +651,5 @@ public class OthelloModel {
         }
         return mask;
     }
-
-    public long getNumberOfAllAvailableMoves() {
-        return 64;
-    }
 }
 
