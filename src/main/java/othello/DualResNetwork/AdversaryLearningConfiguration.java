@@ -15,7 +15,7 @@ import java.nio.file.Paths;
  */
 public class AdversaryLearningConfiguration {
   public static double learningRate = 1e-4;
-  public static int batchSize = 64;
+  public static int batchSize = 16;
 
   public static double dirichletAlpha = 1.1;
   public static double dirichletWeight = 0.45;
