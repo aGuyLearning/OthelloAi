@@ -73,7 +73,7 @@ public class OthelloGuiController implements Initializable {
             this.setBtnColor(index);
             this.fields[index].setOnAction(null);
         }
-        this.possibleMoves = game.getValidMovesIndexes();
+        this.possibleMoves = game.getValidMoveIndices();
         if (possibleMoves.length == 0){
             if(game.isRunning()) {
                 Alert alert = new Alert(Alert.AlertType.WARNING);
@@ -106,14 +106,14 @@ public class OthelloGuiController implements Initializable {
         gameStatus.setText(game.gameStatus());
         if (game.isRunning()) {
             playerTurn.setText("It is " + game.getCurrentPlayer() + "'s turn");
-            if (game.getCurrent() == OthelloModel.PLAYER_WHITE){
+            if (game.toPlay() == OthelloModel.PLAYER_WHITE){
                 int cell = (int) game.getLastCellChanged();
                 int row = cell / OthelloModel.BOARD_SIZE;
                 int col = cell - row * OthelloModel.BOARD_SIZE;
                 Move aiMove = ai.nextMove(new Move(col, row),0,0);
                 if (aiMove != null && game.isRunning()) {
                     int cellIndex = aiMove.y * OthelloModel.BOARD_SIZE + aiMove.x;
-                    int[] m = game.getValidMovesIndexes();
+                    int[] m = game.getValidMoveIndices();
                     for (int i = 0; i < m.length; i++) {
                         if (m[i] == cellIndex) {
                             game.makeMove(i);

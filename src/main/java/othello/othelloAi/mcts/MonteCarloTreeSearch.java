@@ -1,6 +1,13 @@
-package othello.othelloAi;
+package othello.othelloAi.mcts;
 
-import java.util.List;
+import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.nd4j.linalg.api.ndarray.INDArray;
+import org.nd4j.linalg.factory.Nd4j;
+import othello.DualResNetwork.AdversaryLearningConfiguration;
+import othello.DualResNetwork.AdversaryLearningConstants;
+import othello.othelloAi.OthelloModel;
+
+import java.util.Arrays;
 import java.util.Random;
 
 /**
@@ -9,14 +16,17 @@ import java.util.Random;
  */
 public class MonteCarloTreeSearch {
 
-    private static final int WIN_SCORE = 10;
     private int level;
     private Random rnd;
-    private int opponent;
+    private ComputationGraph model;
 
-    public MonteCarloTreeSearch(Random rnd) {
-        this.level = 1;
+    Node rootNode;
+
+    public MonteCarloTreeSearch(Random rnd, ComputationGraph model) {
+        this.level = 2;
         this.rnd = rnd;
+        this.model = model;
+
     }
 
     public int getLevel() {
@@ -31,81 +41,107 @@ public class MonteCarloTreeSearch {
         return 2 * (this.level - 1) + 1;
     }
 
-    public OthelloModel findNextMove(OthelloModel board, int playerNo) {
-        long start = System.currentTimeMillis();
-        long end = start + 60 * getMillisForCurrentLevel();
+    public INDArray findNextMove(OthelloModel board, int temperature) {
+        //long start = System.currentTimeMillis();
+        //long end = start + 60 * getMillisForCurrentLevel();
 
-        opponent = 3 - playerNo;
-        Tree tree = new Tree();
-        Node rootNode = tree.getRoot();
-        rootNode.getState().setBoard(board);
-        rootNode.getState().setPlayerNo(opponent);
 
-        while (System.currentTimeMillis() < end) {
-            // Phase 1 - Selection
-            Node promisingNode = selectPromisingNode(rootNode);
-            // Phase 2 - Expansion
-            if (promisingNode.getState().getBoard().isRunning()) {
-                expandNode(promisingNode);
+        int playout = 0; // Todo: only for development and training
+        int[] validMoves = board.getValidMoveIndices();
+        if (validMoves.length == 0){
+            return board.validMovesMask();
+        }
+        this.rootNode = new Node(-1, board.getOpponent(), 0, 1.0, 0.5, null);
+        while (playout < AdversaryLearningConfiguration.numberOfMonteCarloSimulations) {
+            OthelloModel copy = board.copy();
+            simulateRandomPlayout(rootNode, copy);
+            playout ++;
+
+        }
+
+        int[] visitedCounts = new int[validMoves.length];
+        int maxVisitedCounts = 0;
+
+        for (int index = 0; index < validMoves.length; index++) {
+
+            if (this.rootNode.containsChildMoveIndex(index)) {
+
+                visitedCounts[index] = this.rootNode.getChildWithMoveIndex(index).timesVisited;
+                if (visitedCounts[index] > maxVisitedCounts) {
+
+                    maxVisitedCounts = visitedCounts[index];
+                }
             }
-            // Phase 3 - Simulation
-            Node nodeToExplore = promisingNode;
-            if (promisingNode.getChildArray().size() > 0) {
-                nodeToExplore = promisingNode.getRandomChildNode();
+        }
+
+        INDArray moveProbabilities = Nd4j.zeros(OthelloModel.NUM_SQUARES);
+
+        // random play during exploartion phase
+        if (0 == temperature) {
+
+            INDArray visitedCountsArray = Nd4j.createFromArray(visitedCounts);
+
+            INDArray visitedCountsMaximums = Nd4j.where(visitedCountsArray.gte(visitedCountsArray.amax(0).getNumber(0)), null, null)[0];
+
+            visitedCountsArray.close();
+
+            moveProbabilities.putScalar(
+                    visitedCountsMaximums.getInt(
+                            AdversaryLearningConstants.randomGenerator.nextInt((int) visitedCountsMaximums.length())),
+                    AdversaryLearningConstants.ONE);
+
+            return moveProbabilities;
+        }
+
+        INDArray softmaxParameters = Nd4j.zeros(OthelloModel.NUM_SQUARES);
+        for (int i = 0; i < validMoves.length; i++) {
+            softmaxParameters.putScalar(validMoves[i], (1 / temperature) * Math.log(visitedCounts[i] + 1e-8));
+        }
+
+        double maxSoftmaxParameter = softmaxParameters.maxNumber().doubleValue();
+
+        for (int i = 0; i < validMoves.length; i++) {
+
+            double softmaxParameter = softmaxParameters.getDouble(i);
+
+            moveProbabilities.putScalar(i, Math.exp(softmaxParameter - maxSoftmaxParameter));
+        }
+
+        moveProbabilities = moveProbabilities.div(moveProbabilities.sumNumber());
+        return moveProbabilities;
+    }
+
+    private void simulateRandomPlayout(Node node, OthelloModel game) {
+        // Selection
+        if (node.isExpanded()) {
+            node = node.getChildWithMaxScore();
+            game.makeMove(node.lastMove);
+        }
+        OthelloModel currentBoard = game.copy();
+        // Simulation
+        INDArray[] neuralNetOutput = this.model.output(game.processedBoard());
+
+        INDArray actionProbabilities = neuralNetOutput[0];
+        double leafValue = neuralNetOutput[1].getDouble(0);
+
+        INDArray validActionProbabilities = actionProbabilities.mul(game.validMovesMask());
+        validActionProbabilities = validActionProbabilities.div(validActionProbabilities.sumNumber());
+        if (!game.isRunning()) {
+
+            double endResult = game.checkStatus();
+
+            leafValue = endResult;
+            if (OthelloModel.PLAYER_BLACK == node.lastMoveColor) {
+
+                leafValue = 1 - leafValue;
             }
-            int playoutResult = simulateRandomPlayout(nodeToExplore);
-            // Phase 4 - Update
-            backPropogation(nodeToExplore, playoutResult);
         }
-
-        Node winnerNode = rootNode.getChildWithMaxScore();
-        tree.setRoot(winnerNode);
-        return winnerNode.getState().getBoard();
-    }
-
-    private Node selectPromisingNode(Node rootNode) {
-        Node node = rootNode;
-        while (node.getChildArray().size() != 0) {
-            node = UCT.findBestNodeWithUCT(node);
+        // Update
+        node.backpropagation(1 - leafValue);
+        // Expansion
+        if (game.isRunning()) {
+            node.expand(game, validActionProbabilities);
         }
-        return node;
-    }
-
-    private void expandNode(Node node) {
-        List<State> possibleStates = node.getState().getAllPossibleStates();
-        possibleStates.forEach(state -> {
-            Node newNode = new Node(state);
-            newNode.setParent(node);
-            newNode.getState().setPlayerNo(node.getState().getOpponent());
-            node.getChildArray().add(newNode);
-        });
-    }
-
-    private void backPropogation(Node nodeToExplore, int playerNo) {
-        Node tmp = nodeToExplore;
-        while (tmp != null) {
-            tmp.getState().incrementVisit();
-            if (tmp.getState().getPlayerNo() == playerNo)
-                tmp.getState().addScore(WIN_SCORE);
-            tmp = tmp.getParent();
-        }
-    }
-
-    private int simulateRandomPlayout(Node node) {
-        Node tmp = new Node(node);
-        State tmpState = tmp.getState();
-        int boardStatus = tmpState.getBoard().checkStatus();
-
-        if (boardStatus == opponent) {
-            tmp.getParent().getState().setWinScore(Integer.MIN_VALUE);
-            return boardStatus;
-        }
-        while (tmp.getState().getBoard().isRunning()) {
-            tmpState.randomPlay();
-            boardStatus = tmpState.getBoard().checkStatus();
-        }
-
-        return boardStatus;
     }
 
 }

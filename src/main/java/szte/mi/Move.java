@@ -29,6 +29,8 @@ public final int x;
 /** Y coordinate on the board */
 public final int y;
 
+public int index;
+
 /** Constructs the move. It does not perform any checks on the values.
 * @param x X coordinate on the board. It is indexed from 0, that is,
 * its possible vales are 0, 1, etc.

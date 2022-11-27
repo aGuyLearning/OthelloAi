@@ -15,13 +15,12 @@ import java.nio.file.Paths;
  */
 public class AdversaryLearningConfiguration {
   public static double learningRate = 1e-4;
-  public static ISchedule learningRateSchedule;
-  public static int batchSize = 8192;
+  public static int batchSize = 64;
 
   public static double dirichletAlpha = 1.1;
   public static double dirichletWeight = 0.45;
-  public static boolean alwaysUpdateNeuralNetwork = true;
-  public static int numberOfGamesToDecideUpdate = 36;
+  public static boolean alwaysUpdateNeuralNetwork = false;
+  public static int numberOfGamesToDecideUpdate = 6;
   public static double gamesWinRatioThresholdNewNetworkUpdate = 0.55;
   public static int numberOfIterationsBeforePotentialUpdate = 10;
   public static int iterationStart = 1;
@@ -34,10 +33,7 @@ public class AdversaryLearningConfiguration {
   public static String bestModelFileName = "bestmodel.bin";
   public static String trainExamplesFileName = "trainExamples.obj";
 
-  public static double uctConstantFactor = 0.8;
-  public static int numberOfMonteCarloSimulations = 30;
-
-  public static int populationSize = 10;
+  public static int numberOfMonteCarloSimulations = 3;
 
   public static String getAbsoluteModelPathFrom(String modelName) {
 
@@ -46,23 +42,22 @@ public class AdversaryLearningConfiguration {
     return currentPath + File.separator + modelName;
   }
 
-  public static double getCurrentTemperature(int iteration, int moveNumber) {
+  public static int getCurrentTemperature(int iteration, int moveNumber) {
 
     if (getFromNumberOfIterationsTemperatureZero() >= 0 && iteration >= getFromNumberOfIterationsTemperatureZero() ||
-            getFromNumberOfMovesTemperatureZero() >= 0 && moveNumber >= getFromNumberOfMovesTemperatureZero()) {
+            getFromNumberOfMovesTemperatureZero() >= 0 && moveNumber >= fromNumberOfMovesTemperatureZero) {
       return 0;
     }
 
-    return AdversaryLearningConstants.ONE;
+    return (int) AdversaryLearningConstants.ONE;
   }
 
-  private static int getFromNumberOfIterationsTemperatureZero() {
+  public static int getFromNumberOfIterationsTemperatureZero() {
     return fromNumberOfIterationsTemperatureZero;
   }
 
-  private static int getFromNumberOfMovesTemperatureZero() {
+
+  public static int getFromNumberOfMovesTemperatureZero() {
     return fromNumberOfMovesTemperatureZero;
   }
-
-
 }

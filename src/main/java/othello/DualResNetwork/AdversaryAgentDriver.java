@@ -1,12 +1,21 @@
 package othello.DualResNetwork;
 
+import cc.mallet.types.Dirichlet;
+import org.apache.commons.math3.distribution.EnumeratedIntegerDistribution;
 import org.deeplearning4j.nn.graph.ComputationGraph;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import othello.othelloAi.AiPlayer;
 import othello.othelloAi.OthelloModel;
+import othello.othelloAi.mcts.MonteCarloTreeSearch;
+import szte.mi.Move;
 
-import static othello.DualResNetwork.AdversaryLearning.MAX_WIN;
-import static othello.DualResNetwork.AdversaryLearning.MIN_WIN;
+import java.util.ArrayList;
+import java.util.Random;
+import java.util.Set;
+import java.util.stream.IntStream;
+
+import static othello.DualResNetwork.AdversaryLearning.*;
 
 /**
  * {@link AdversaryAgentDriver} is only relevant if {@link AdversaryLearningConfiguration} has alwaysUpdateNeuralNetwork = false.
@@ -26,7 +35,7 @@ public class AdversaryAgentDriver {
     this.player2Policy = player2;
   }
 
-  public int[] playGames(OthelloModel game, AdversaryLearningConfiguration configuration) {
+  public int[] playGames(OthelloModel game) {
     
     int numberOfEpisodesPlayer1Starts = AdversaryLearningConfiguration.numberOfGamesToDecideUpdate / 2;
     int numberOfEpisodesPlayer2Starts = AdversaryLearningConfiguration.numberOfGamesToDecideUpdate - numberOfEpisodesPlayer1Starts;
@@ -36,14 +45,13 @@ public class AdversaryAgentDriver {
     int draws = 0;
     
     for (int gameNumber = 1; gameNumber <= numberOfEpisodesPlayer1Starts; gameNumber++) {
+      double gameResult = this.playGame(game.copy());
       
-      double gameResult = this.playGame(game.copy(), configuration);
-      
-      if (gameResult >= MAX_WIN) {
+      if (gameResult == OthelloModel.PLAYER_BLACK) {
         
         player1Wins++;
       
-      } else if (gameResult <= MIN_WIN) {
+      } else if (gameResult == OthelloModel.PLAYER_WHITE) {
         
         player2Wins++;
       
@@ -58,14 +66,13 @@ public class AdversaryAgentDriver {
     player2Policy = tempPlayerPolicy;
 
     for (int gameNumber = 1; gameNumber <= numberOfEpisodesPlayer2Starts; gameNumber++) {
+      double gameResult = this.playGame(game.copy());
       
-      double gameResult = this.playGame(game.createNewInstance(), configuration);
-      
-      if (gameResult <= MIN_WIN) {
+      if (gameResult == OthelloModel.PLAYER_WHITE) {
         
         player1Wins++;
       
-      } else if (gameResult >= MAX_WIN) {
+      } else if (gameResult == OthelloModel.PLAYER_BLACK) {
         
         player2Wins++;
       
@@ -78,48 +85,92 @@ public class AdversaryAgentDriver {
     return new int[] {player1Wins, player2Wins, draws};
   }
   
-  public double playGame(OthelloModel game, AdversaryLearningConfiguration configuration) {
+  public double playGame(OthelloModel game) {
     
-    MonteCarloTreeSearch player1 = new MonteCarloTreeSearch(this.player1Policy, configuration);
-    MonteCarloTreeSearch player2 = new MonteCarloTreeSearch(this.player2Policy, configuration);
-    
-    int[] emptyFields = game.getValidMoveIndices();
-    
+    MonteCarloTreeSearch player1 = new MonteCarloTreeSearch(new Random(), player1Policy);
+    MonteCarloTreeSearch player2 = new MonteCarloTreeSearch(new Random(), player2Policy);
+
     int currentPlayer = OthelloModel.PLAYER_BLACK;
 
+    int[] emptyFields = game.getValidMoveIndices();
+
     while (game.isRunning()) {
-    
-      INDArray moveActionValues = Nd4j.zeros(game.getNumMoves());
+      System.out.println(game);
+      INDArray actionProbabilities = Nd4j.zeros(game.getNumberOfAllAvailableMoves());
       if (currentPlayer == OthelloModel.PLAYER_BLACK) {
-        
-        moveActionValues = player1.getActionValues(game, 0);
+        actionProbabilities = player1.findNextMove(game, 0);
         
       } else if (currentPlayer == OthelloModel.PLAYER_WHITE) {
-        
-        moveActionValues = player2.getActionValues(game, 0);
-      }
-      
-      int moveAction = moveActionValues.argMax(0).getInt(0);
 
-      if (!emptyFields.contains(moveAction)) {
-        // Todo: select random move
+        actionProbabilities = player2.findNextMove(game, 0);
       }
-      
-      game.makeMove(moveAction);
+      INDArray validMask = game.validMovesMask();
+      int[] validMoveIndices = game.getValidMoveIndices();
+      INDArray validActionProbabilities = actionProbabilities.mul(validMask);
+      INDArray normalizedActionProbabilities = validActionProbabilities.div(Nd4j.sum(actionProbabilities));
+      int moveAction = chooseNewMoveAction(game.getValidMoveIndices(), normalizedActionProbabilities);
+
+      int finalMoveAction = moveAction;
+      boolean contains = !IntStream.of(emptyFields).anyMatch(x -> x == finalMoveAction);
+      if (!contains) {
+        moveAction = AdversaryLearningConstants.randomGenerator.nextInt(emptyFields.length);
+        game.makeMove(moveAction);
+      }
+      else{
+        if (moveAction == -1){
+          game.makeMove(0);
+        }
+        else {
+          for (int i = 0; i < validMoveIndices.length; i++) {
+            if (moveAction == validMoveIndices[i]) {
+              game.makeMove(i);
+              break;
+            }
+          }
+        }
+      }
       emptyFields = game.getValidMoveIndices();
       currentPlayer = game.toPlay();
     }
     
-    double endResult = game.getEndResult(currentPlayer);
+    double endResult = game.checkStatus();
     if (endResult > 0.5) {
 
-      return MAX_WIN;    
+      return OthelloModel.PLAYER_BLACK;
 
     } else if (endResult < 0.5) {
       
-      return MIN_WIN;
+      return OthelloModel.PLAYER_WHITE;
     }
     
     return DRAW_VALUE;
   }
+  int chooseNewMoveAction(int[] validMoveIndices, INDArray normalizedActionProbabilities) {
+
+    int moveAction;
+    if (validMoveIndices.length == 0) {
+      moveAction = -1;
+    } else if (validMoveIndices.length == 1) {
+      moveAction = validMoveIndices[0                                                                                 ];
+    } else {
+
+      double alpha =AdversaryLearningConfiguration.dirichletAlpha;
+      Dirichlet dirichlet = new Dirichlet(validMoveIndices.length, alpha);
+      INDArray nextDistribution = Nd4j.createFromArray(dirichlet.nextDistribution());
+      INDArray slices = Nd4j.createFromArray(validMoveIndices);
+      INDArray reducedValidActionProbabilities = normalizedActionProbabilities.getColumns(slices.toIntVector());
+      INDArray noiseActionDistribution = reducedValidActionProbabilities
+              .mul(1 - AdversaryLearningConfiguration.dirichletWeight)
+              .add(nextDistribution.mul(AdversaryLearningConfiguration.dirichletWeight));
+
+      nextDistribution.close();
+
+      EnumeratedIntegerDistribution distribution = new EnumeratedIntegerDistribution(validMoveIndices,
+              noiseActionDistribution.toDoubleVector());
+
+      moveAction = distribution.sample();
+    }
+    return moveAction;
+  }
+
 }

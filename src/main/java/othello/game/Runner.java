@@ -21,20 +21,14 @@ public class Runner {
             p2.init(0, 3, rnd);
             Move last = null;
             while (game.isRunning()) {
-                long start = System.currentTimeMillis();
                 last = p2.nextMove(last, 0, 0);
-                System.out.println("Time of Lisa method execution: " + (((double)System.currentTimeMillis() - (double)start))/1_000_000_000);
-                System.out.println(last);
                 updateGame(game, last);
-                start = System.currentTimeMillis();
                 last = p1.nextMove(last, 0, 0);
-                System.out.println("Time of Carl method execution: " + (((double)System.currentTimeMillis() - (double)start))/1_000_000_000);
                 updateGame(game ,last);
-                System.out.println(last);
-                System.out.println(game);
+
             }
 
-            int winner = game.checkStatus();
+            double winner = game.checkStatus();
             if (winner == OthelloModel.PLAYER_BLACK){
                 black++;
             } else if (winner == OthelloModel.PLAYER_WHITE) {
@@ -51,7 +45,7 @@ public class Runner {
     private static void updateGame(OthelloModel game, Move move) {
         if (move != null && game.isRunning()) {
             int cellIndex = move.y * OthelloModel.BOARD_SIZE + move.x;
-            int[] m = game.getValidMovesIndexes();
+            int[] m = game.getValidMoveIndices();
             for (int i = 0; i < m.length; i++) {
                 if (m[i] == cellIndex) {
                     game.makeMove(i);
@@ -61,5 +55,6 @@ public class Runner {
         } else if (move == null && game.isRunning()) {
             game.makeMove(0);
         }
+        System.out.println(game);
     }
 }

@@ -42,7 +42,7 @@ class AlphaGoZeroBuilder {
         this.conf =  new NeuralNetConfiguration.Builder()
                 .updater(new Sgd())
                 .weightInit(WeightInit.LECUN_NORMAL)
-                .graphBuilder().setInputTypes(InputType.convolutional(BOARD_SIZE, BOARD_SIZE, 11));
+                .graphBuilder().setInputTypes(InputType.convolutional(BOARD_SIZE, BOARD_SIZE, 3));
     }
 
     public AlphaGoZeroBuilder() {
@@ -112,7 +112,7 @@ class AlphaGoZeroBuilder {
 
     /**
      * Policy head, predicts next moves (including passing), so
-     * outputs a vector of BOARD_SIZE*BOARD_SIZE + 1 = 65 values.
+     * outputs a vector of BOARD_SIZE*BOARD_SIZE = 64 values.
      */
     public String addPolicyHead(String inName, boolean useActivation) {
         String convName = "policy_head_conv_";
@@ -124,7 +124,7 @@ class AlphaGoZeroBuilder {
                 .convolutionMode(convolutionMode).nOut(2).nIn(256).build(), inName);
         conf.addLayer(bnName, new BatchNormalization.Builder().nOut(2).build(), convName);
         conf.addLayer(actName, new ActivationLayer.Builder().activation(Activation.RELU).build(), bnName);
-        conf.addLayer(denseName, new OutputLayer.Builder().nIn(2 * BOARD_SIZE * BOARD_SIZE).nOut(BOARD_SIZE * BOARD_SIZE + 1).build(), actName);
+        conf.addLayer(denseName, new OutputLayer.Builder().nIn(2 * BOARD_SIZE * BOARD_SIZE).nOut(BOARD_SIZE * BOARD_SIZE).build(), actName);
 
         Map<String, InputPreProcessor> preProcessorMap = new HashMap<String, InputPreProcessor>();
         preProcessorMap.put(denseName, new CnnToFeedForwardPreProcessor(BOARD_SIZE, BOARD_SIZE, 2));

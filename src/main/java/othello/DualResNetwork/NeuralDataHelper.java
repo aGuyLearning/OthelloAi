@@ -1,12 +1,12 @@
-package ch.evolutionsoft.rl.tictactoe;
+package othello.DualResNetwork;
 
-
-import java.util.ArrayList;
-import java.util.List;
 
 import org.nd4j.common.primitives.Pair;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class NeuralDataHelper {
 

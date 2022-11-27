@@ -1,10 +1,14 @@
 package othello.DualResNetwork;
 
 import org.deeplearning4j.nn.graph.ComputationGraph;
+import org.deeplearning4j.util.NetworkUtils;
 import org.nd4j.linalg.api.ndarray.INDArray;
 import org.nd4j.linalg.factory.Nd4j;
+import org.nd4j.linalg.indexing.INDArrayIndex;
+import org.nd4j.linalg.indexing.NDArrayIndex;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import othello.othelloAi.OthelloModel;
 
 import java.util.Arrays;
 
@@ -28,13 +32,14 @@ public class EvalTrainer {
 
     private static final Logger log = LoggerFactory.getLogger(EvalTrainer.class);
 
+
     public static void main(String[] args) {
 
-        int miniBatchSize = 32;
+        int miniBatchSize = 5;
         int boardSize = 8;
 
         int numResidualBlocks = 10;
-        int numFeaturePlanes = 11;
+        int numFeaturePlanes = 3;
 
         log.info("Initializing AGZ model");
         ComputationGraph model = DualResnetModel.getModel(numResidualBlocks, numFeaturePlanes);
@@ -44,7 +49,7 @@ public class EvalTrainer {
         System.out.println(Arrays.toString(input.shape()));
 
         // move prediction has one value for each point on the board (19x19) plus one for passing.
-        INDArray policyOutput = Nd4j.create(miniBatchSize, boardSize * boardSize + 1);
+        INDArray policyOutput = Nd4j.create(miniBatchSize, boardSize * boardSize);
 
         // the value network spits out a value between 0 and 1 to assess how good the current board situation is.
         INDArray valueOutput = Nd4j.create(miniBatchSize, 1);
