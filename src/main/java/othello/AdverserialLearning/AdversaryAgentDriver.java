@@ -101,8 +101,6 @@ public class AdversaryAgentDriver {
                 draws++;
             }
         }
-        System.out.println(player1Wins+ " " +player2Wins+ " " +draws);
-
         return new int[]{player1Wins, player2Wins, draws};
     }
 }
