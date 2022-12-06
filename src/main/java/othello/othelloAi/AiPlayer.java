@@ -51,8 +51,7 @@ public class AiPlayer implements Player {
             } else {
                 int level = game.getRound() > 40 && game.getRound() < 55? 2 : 1;
                 mcts.setLevel(level);
-                // this.game = mcts.findNextMove(game, order);
-                game.makeMove(MiniMaxAlpha.getBestMove(game));
+                this.game = mcts.findNextMove(game, order);
 
                 long theMove = game.getLastCellChanged();
                 if (theMove != OthelloModel.PASS) {
