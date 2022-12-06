@@ -19,10 +19,6 @@ public class Trainer {
 
         ComputationGraph neuralNet = DualResnetModel.getModel(numResidualBlocks, numFeaturePlanes);
 
-        if (log.isInfoEnabled()) {
-            log.info(neuralNet.summary());
-        }
-
         AdversaryLearning adversaryLearning =
                 new AdversaryLearning(
                         new OthelloModel(),

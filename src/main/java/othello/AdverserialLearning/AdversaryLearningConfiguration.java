@@ -17,25 +17,25 @@ public class AdversaryLearningConfiguration {
 
   public static final Random randomGenerator = new Random(DEFAULT_SEED);
   public static double learningRate = 1e-4;
-  public static int batchSize = 32;
+  public static int batchSize = 64;
 
   public static double dirichletAlpha = 1.1;
   public static double dirichletWeight = 0.45;
   public static boolean alwaysUpdateNeuralNetwork = false;
-  public static int numberOfGamesToDecideUpdate = 8;
+  public static int numberOfGamesToDecideUpdate = 16;
   public static double gamesWinRatioThresholdNewNetworkUpdate = 0.55;
-  public static int numberOfIterationsBeforePotentialUpdate = 10;
-  public static int iterationStart = 1;
+  public static int numberOfIterationsBeforePotentialUpdate = 400;
+  public static int iterationStart = 12;
   public static int numberOfIterations = 250;
   public static int checkPointIterationsFrequency = 50;
   public static int fromNumberOfIterationsTemperatureZero = -1;
   public static int fromNumberOfMovesTemperatureZero = 3;
-  public static int maxTrainExamplesHistory = 5000;
+  public static int maxTrainExamplesHistory = 1000000;
 
   public static String bestModelFileName = "bestmodel.bin";
   public static String trainExamplesFileName = "trainExamples.obj";
 
-  public static int numberOfMonteCarloSimulations = 3;
+  public static int numberOfMonteCarloSimulations = 400;
 
   public static String getAbsoluteModelPathFrom(String modelName) {
 
