@@ -130,6 +130,5 @@ public class OthelloGuiController implements Initializable {
             playerTurn.setText("");
         }
     }
-
-
+    // the end
 }
